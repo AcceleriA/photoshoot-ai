@@ -160,10 +160,8 @@ export default function PhotoshootApp() {
     setGenerating(true);
     setResults({});
 
-    // Extract short description from analysis (last line)
-    const subjectDesc = analysis
-      ? analysis.split('\n').filter(l => l.trim()).pop() || 'person'
-      : 'person';
+    // Passer l'analyse morphologique COMPLETE a Gemini (pas juste la derniere ligne)
+    const subjectDesc = analysis || '';
 
     // Generate sequentially to avoid rate limits
     for (const prompt of objective.prompts) {
@@ -264,7 +262,7 @@ export default function PhotoshootApp() {
             <div className="animate-hero">
               <div className="badge" style={{ marginBottom: '24px' }}>
                 <span className="badge-dot" />
-                Propulse par Imagen 3
+                Propulse par Gemini Flash Image
               </div>
               <h1 style={{ marginBottom: '16px' }}>
                 Vos photos <em>professionnelles</em>,{' '}
@@ -495,7 +493,7 @@ export default function PhotoshootApp() {
       <footer className="footer">
         <div className="container">
           <p>
-            Photoshoot AI - Propulse par Google Imagen 3 (Nano Banana Pro)
+            Photoshoot AI - Propulse par Google Gemini Flash Image + GPT-5.4-nano
           </p>
         </div>
       </footer>
