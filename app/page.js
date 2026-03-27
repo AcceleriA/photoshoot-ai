@@ -64,7 +64,7 @@ const OBJECTIVES = [
   {
     id: 'full-shooting',
     label: 'Shooting complet',
-    description: 'Toutes les variantes (16 à 20 photos)',
+    description: 'Toutes les variantes (10 photos)',
     color: '#6c40f3',
     prompts: [
       { id: 1, name: 'Lifestyle urbain', color: '#4f9aea', desc: 'Série principale (4 photos)' },
@@ -433,7 +433,7 @@ export default function PhotoshootApp() {
                     <h3>{obj.label}</h3>
                     <p>{obj.description}</p>
                     <p style={{ fontSize: '13px', color: 'var(--accent)', marginTop: '8px' }}>
-                      {obj.prompts.length} style{obj.prompts.length > 1 ? 's' : ''} → {obj.prompts.length * 4} photos
+                      {obj.prompts.length} style{obj.prompts.length > 1 ? 's' : ''} → {obj.prompts.length * 2} photos
                     </p>
                   </div>
                 ))}
@@ -445,7 +445,7 @@ export default function PhotoshootApp() {
                     className="btn btn--orange btn--large"
                     onClick={handleGenerate}
                   >
-                    Lancer la génération ({objective?.prompts.length * 4} photos)
+                    Lancer la génération ({objective?.prompts.length * 2} photos)
                   </button>
                 </div>
               )}
