@@ -273,7 +273,7 @@ export default function PhotoshootApp() {
             <div className="animate-hero">
               <div className="badge" style={{ marginBottom: '24px' }}>
                 <span className="badge-dot" />
-                Propulsé par Gemini
+                Propulsé par Imagen 3
               </div>
               <h1 style={{ marginBottom: '16px' }}>
                 Vos photos <em>professionnelles</em>,{' '}
@@ -505,7 +505,7 @@ export default function PhotoshootApp() {
       <footer className="footer">
         <div className="container">
           <p>
-            Photoshoot AI - Propulsé par Google Gemini
+            Photoshoot AI - Propulsé par Imagen 3
           </p>
         </div>
       </footer>
