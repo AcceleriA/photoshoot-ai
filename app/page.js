@@ -95,38 +95,51 @@ export default function PhotoshootApp() {
   const [lightboxImage, setLightboxImage] = useState(null);
   const fileInputRef = useRef(null);
 
+  // Convertit toute image (y compris HEIC iPhone) en JPEG base64 via canvas
+  const convertToJpegBase64 = useCallback((file) => {
+    const objectUrl = URL.createObjectURL(file);
+    setImagePreview(objectUrl);
+
+    const img = new Image();
+    img.onload = () => {
+      // Limiter a 2048px max pour eviter les problemes memoire
+      const MAX_SIZE = 2048;
+      let w = img.width;
+      let h = img.height;
+      if (w > MAX_SIZE || h > MAX_SIZE) {
+        const ratio = Math.min(MAX_SIZE / w, MAX_SIZE / h);
+        w = Math.round(w * ratio);
+        h = Math.round(h * ratio);
+      }
+
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, w, h);
+      const jpegDataUrl = canvas.toDataURL('image/jpeg', 0.92);
+      const base64 = jpegDataUrl.split(',')[1];
+      setImageBase64(base64);
+    };
+    img.src = objectUrl;
+  }, []);
+
   // Handle file upload
   const handleFileChange = useCallback((e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     setImageFile(file);
-    setImagePreview(URL.createObjectURL(file));
-
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const base64 = ev.target.result.split(',')[1];
-      setImageBase64(base64);
-    };
-    reader.readAsDataURL(file);
-  }, []);
+    convertToJpegBase64(file);
+  }, [convertToJpegBase64]);
 
   // Handle drag & drop
   const handleDrop = useCallback((e) => {
     e.preventDefault();
     const file = e.dataTransfer.files?.[0];
-    if (!file || !file.type.startsWith('image/')) return;
-
+    if (!file) return;
     setImageFile(file);
-    setImagePreview(URL.createObjectURL(file));
-
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const base64 = ev.target.result.split(',')[1];
-      setImageBase64(base64);
-    };
-    reader.readAsDataURL(file);
-  }, []);
+    convertToJpegBase64(file);
+  }, [convertToJpegBase64]);
 
   // Analyze photo (morphological analysis)
   const handleAnalyze = async () => {
@@ -329,7 +342,7 @@ export default function PhotoshootApp() {
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept="image/*"
+                  accept="image/*,.heic,.heif"
                   onChange={handleFileChange}
                   style={{ display: 'none' }}
                 />
