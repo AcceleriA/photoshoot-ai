@@ -87,8 +87,7 @@ export default function PhotoshootApp() {
   const [imagePreview, setImagePreview] = useState(null);
   const [imageBase64, setImageBase64] = useState(null);
   const [selectedObjective, setSelectedObjective] = useState(null);
-  const [analysis, setAnalysis] = useState(null);
-  const [analyzing, setAnalyzing] = useState(false);
+  // analyse morphologique désactivée (Gemini travaille directement depuis l'image)
   const [generating, setGenerating] = useState(false);
   const [promptStatuses, setPromptStatuses] = useState({});
   const [results, setResults] = useState({});
@@ -160,26 +159,10 @@ export default function PhotoshootApp() {
     convertToBase64(file);
   }, [convertToBase64]);
 
-  // Analyser la photo (analyse morphologique)
-  const handleAnalyze = async () => {
+  // Passer directement à l'étape objectif (plus d'analyse GPT)
+  const handleContinue = () => {
     if (!imageBase64) return;
-    setAnalyzing(true);
-    try {
-      const res = await fetch('/api/analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageBase64 }),
-      });
-      const data = await res.json();
-      if (data.error) throw new Error(data.error);
-      setAnalysis(data.analysis);
-      setStep(1);
-    } catch (err) {
-      alert('Une erreur est survenue lors de l\'analyse. Veuillez réessayer.');
-      console.error('Analyze error:', err);
-    } finally {
-      setAnalyzing(false);
-    }
+    setStep(1);
   };
 
   // Générer les images pour tous les prompts de l'objectif
@@ -193,9 +176,6 @@ export default function PhotoshootApp() {
     setGenerating(true);
     setResults({});
 
-    // Passer l'analyse morphologique complète pour enrichir les prompts
-    const subjectDesc = analysis || 'person';
-
     // Générer séquentiellement pour éviter les limites de débit
     for (const prompt of objective.prompts) {
       setPromptStatuses(prev => ({ ...prev, [prompt.id]: 'loading' }));
@@ -207,7 +187,6 @@ export default function PhotoshootApp() {
           body: JSON.stringify({
             promptId: prompt.id,
             imageBase64,
-            subjectDescription: subjectDesc,
           }),
         });
         const data = await res.json();
@@ -257,7 +236,6 @@ export default function PhotoshootApp() {
     setImagePreview(null);
     setImageBase64(null);
     setSelectedObjective(null);
-    setAnalysis(null);
     setPromptStatuses({});
     setResults({});
   };
@@ -295,7 +273,7 @@ export default function PhotoshootApp() {
             <div className="animate-hero">
               <div className="badge" style={{ marginBottom: '24px' }}>
                 <span className="badge-dot" />
-                Propulsé par Gemini
+                Propulsé par Gemini 3 Pro
               </div>
               <h1 style={{ marginBottom: '16px' }}>
                 Vos photos <em>professionnelles</em>,{' '}
@@ -387,24 +365,10 @@ export default function PhotoshootApp() {
                 <div style={{ textAlign: 'center', marginTop: '24px' }}>
                   <button
                     className="btn btn--primary btn--large"
-                    onClick={handleAnalyze}
-                    disabled={analyzing}
+                    onClick={handleContinue}
                   >
-                    {analyzing ? (
-                      <>
-                        <span className="spinner" />
-                        Analyse en cours...
-                      </>
-                    ) : (
-                      'Analyser le visage'
-                    )}
+                    Choisir l'objectif
                   </button>
-                </div>
-              )}
-
-              {analysis && (
-                <div className="analysis-box">
-                  {analysis}
                 </div>
               )}
             </div>
@@ -472,7 +436,7 @@ export default function PhotoshootApp() {
                   const statusLabels = {
                     pending: 'En attente',
                     loading: 'Génération...',
-                    done: '4 photos',
+                    done: '2 photos',
                     error: 'Erreur',
                   };
                   return (
@@ -541,7 +505,7 @@ export default function PhotoshootApp() {
       <footer className="footer">
         <div className="container">
           <p>
-            Photoshoot AI - Propulsé par Google Gemini
+            Photoshoot AI - Propulsé par Gemini 3 Pro
           </p>
         </div>
       </footer>
