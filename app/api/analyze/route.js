@@ -1,4 +1,4 @@
-import { analyzeMorphology } from '../../../lib/vertex-ai';
+import { analyzeMorphology, ensureJpeg } from '../../../lib/vertex-ai';
 import { NextResponse } from 'next/server';
 
 export async function POST(request) {
@@ -14,7 +14,10 @@ export async function POST(request) {
       return NextResponse.json({ error: 'OPENAI_API_KEY non configuree' }, { status: 500 });
     }
 
-    const analysis = await analyzeMorphology(imageBase64, openaiKey);
+    // Convertir en JPEG (gere HEIC, PNG, WebP, etc.)
+    const jpegBase64 = await ensureJpeg(imageBase64);
+
+    const analysis = await analyzeMorphology(jpegBase64, openaiKey);
 
     return NextResponse.json({ analysis });
   } catch (error) {
