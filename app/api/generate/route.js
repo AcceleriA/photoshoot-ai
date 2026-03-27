@@ -1,4 +1,4 @@
-import { generateImages } from '../../../lib/vertex-ai';
+import { generateImages, ensureJpeg } from '../../../lib/vertex-ai';
 import { PROMPTS, enrichPrompt } from '../../../lib/prompts';
 import { NextResponse } from 'next/server';
 
@@ -21,11 +21,14 @@ export async function POST(request) {
       return NextResponse.json({ error: 'GOOGLE_PROJECT_ID non configure' }, { status: 500 });
     }
 
+    // Convertir en JPEG (gere HEIC, PNG, WebP, etc.)
+    const jpegBase64 = await ensureJpeg(imageBase64);
+
     // Enrichir le prompt avec la description morphologique complete
     const fullPrompt = enrichPrompt(prompt.prompt, subjectDescription);
 
     // Generer 4 images via Gemini Flash Image
-    const images = await generateImages(fullPrompt, imageBase64, 4);
+    const images = await generateImages(fullPrompt, jpegBase64, 4);
 
     return NextResponse.json({
       promptId: prompt.id,
