@@ -314,9 +314,9 @@ export default function PhotoshootApp() {
                 Uploadez votre <em>photo</em>
               </h2>
 
-              <div
+              <label
+                htmlFor="photo-upload"
                 className={`upload-zone ${imagePreview ? 'has-image' : ''}`}
-                onClick={() => fileInputRef.current?.click()}
                 onDrop={handleDrop}
                 onDragOver={(e) => e.preventDefault()}
               >
@@ -335,18 +335,19 @@ export default function PhotoshootApp() {
                       Cliquez ou glissez votre photo ici
                     </p>
                     <p style={{ fontSize: '14px', color: 'var(--text-muted)', margin: '8px auto 0' }}>
-                      JPG, PNG ou WebP - Photo de face ou trois-quarts
+                      JPG, PNG, WebP ou HEIC - Photo de face ou trois-quarts
                     </p>
                   </>
                 )}
                 <input
                   ref={fileInputRef}
+                  id="photo-upload"
                   type="file"
                   accept="image/*,.heic,.heif"
                   onChange={handleFileChange}
                   style={{ display: 'none' }}
                 />
-              </div>
+              </label>
 
               {imagePreview && (
                 <div style={{ textAlign: 'center', marginTop: '24px' }}>
