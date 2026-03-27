@@ -3,57 +3,57 @@
 import { useState, useRef, useCallback } from 'react';
 
 // ============================================================
-// Data - Objectives & Prompts (client-side subset)
+// Data - Objectifs & Prompts (sous-ensemble côté client)
 // ============================================================
 const OBJECTIVES = [
   {
     id: 'linkedin-profile',
     label: 'Photo de profil LinkedIn',
-    description: 'Confiance, credibilite, intemporalite',
+    description: 'Confiance, crédibilité, intemporalité',
     color: '#6c40f3',
     prompts: [
       { id: 4, name: 'Portrait premium fond sombre', color: '#6c40f3', desc: 'Photo signature, fond noir/gris' },
-      { id: 11, name: 'Minimal clair', color: '#6b7280', desc: 'Passe-partout, zero risque' },
+      { id: 11, name: 'Minimal clair', color: '#6b7280', desc: 'Passe-partout, zéro risque' },
       { id: 2, name: 'Portrait lifestyle premium', color: '#4f9aea', desc: 'Plus humain, moins institutionnel' },
     ],
   },
   {
     id: 'linkedin-posts',
-    label: 'Posts LinkedIn incarnes',
-    description: 'Naturel, proximite, credibilite humaine',
+    label: 'Posts LinkedIn incarnés',
+    description: 'Naturel, proximité, crédibilité humaine',
     color: '#4f9aea',
     prompts: [
-      { id: 3, name: 'Cafe et quotidien urbain', color: '#22c55e', desc: 'Ultra humain, non pose' },
+      { id: 3, name: 'Café et quotidien urbain', color: '#22c55e', desc: 'Ultra humain, non posé' },
       { id: 10, name: 'Mouvement naturel', color: '#22c55e', desc: 'Dynamique calme' },
-      { id: 8, name: 'Golden hour', color: '#f97316', desc: 'Chaleur maitrisee' },
+      { id: 8, name: 'Golden hour', color: '#f97316', desc: 'Chaleur maîtrisée' },
     ],
   },
   {
     id: 'about-page',
-    label: 'Page "A propos" / Site web',
-    description: 'Coherence, lisibilite, serieux',
+    label: 'Page "À propos" / Site web',
+    description: 'Cohérence, lisibilité, sérieux',
     color: '#feb06a',
     prompts: [
-      { id: 9, name: 'Fond brut et matieres', color: '#92400e', desc: 'Authentique, solide' },
-      { id: 2, name: 'Portrait lifestyle premium', color: '#4f9aea', desc: 'Equilibre image / humain' },
-      { id: 11, name: 'Minimal clair', color: '#6b7280', desc: 'Tres clean' },
+      { id: 9, name: 'Fond brut et matières', color: '#92400e', desc: 'Authentique, solide' },
+      { id: 2, name: 'Portrait lifestyle premium', color: '#4f9aea', desc: 'Équilibre image / humain' },
+      { id: 11, name: 'Minimal clair', color: '#6b7280', desc: 'Très clean' },
     ],
   },
   {
     id: 'senior-profile',
     label: 'Client exigeant / Profil senior',
-    description: 'Fidelite, zero artefact IA',
+    description: 'Fidélité, zéro artefact IA',
     color: '#ef4444',
     prompts: [
-      { id: 5, name: 'Ultra-safe minimal', color: '#ef4444', desc: 'Securite maximale' },
-      { id: 11, name: 'Minimal clair', color: '#6b7280', desc: 'Tres stable' },
-      { id: 4, name: 'Portrait premium fond sombre', color: '#6c40f3', desc: 'Si le visage s\'y prete' },
+      { id: 5, name: 'Ultra-safe minimal', color: '#ef4444', desc: 'Sécurité maximale' },
+      { id: 11, name: 'Minimal clair', color: '#6b7280', desc: 'Très stable' },
+      { id: 4, name: 'Portrait premium fond sombre', color: '#6c40f3', desc: 'Si le visage s\'y prête' },
     ],
   },
   {
     id: 'corporate',
     label: 'Photo corporate fond couleur',
-    description: 'Institutionnel, fond maitrise',
+    description: 'Institutionnel, fond maîtrisé',
     color: '#1e3a5f',
     prompts: [
       { id: 12, name: 'Corporate fond couleur', color: '#1e3a5f', desc: 'Contextes formels, dirigeants' },
@@ -64,22 +64,22 @@ const OBJECTIVES = [
   {
     id: 'full-shooting',
     label: 'Shooting complet',
-    description: 'Toutes les variantes (16 a 20 photos)',
+    description: 'Toutes les variantes (16 à 20 photos)',
     color: '#6c40f3',
     prompts: [
-      { id: 1, name: 'Lifestyle urbain', color: '#4f9aea', desc: 'Serie principale (4 photos)' },
+      { id: 1, name: 'Lifestyle urbain', color: '#4f9aea', desc: 'Série principale (4 photos)' },
       { id: 2, name: 'Portrait lifestyle premium', color: '#4f9aea', desc: 'Photo de profil' },
-      { id: 3, name: 'Cafe et quotidien', color: '#22c55e', desc: 'Posts et quotidien' },
+      { id: 3, name: 'Café et quotidien', color: '#22c55e', desc: 'Posts et quotidien' },
       { id: 4, name: 'Portrait premium fond sombre', color: '#6c40f3', desc: 'Photo signature' },
-      { id: 5, name: 'Ultra-safe minimal', color: '#ef4444', desc: 'Correction si necessaire' },
+      { id: 5, name: 'Ultra-safe minimal', color: '#ef4444', desc: 'Correction si nécessaire' },
     ],
   },
 ];
 
-const STEPS = ['Upload', 'Objectif', 'Generation', 'Resultats'];
+const STEPS = ['Photo', 'Objectif', 'Génération', 'Résultats'];
 
 // ============================================================
-// Main App Component
+// Composant principal
 // ============================================================
 export default function PhotoshootApp() {
   const [step, setStep] = useState(0);
@@ -95,54 +95,55 @@ export default function PhotoshootApp() {
   const [lightboxImage, setLightboxImage] = useState(null);
   const fileInputRef = useRef(null);
 
-  // Convertit toute image en base64 exploitable par les API
-  // Tente canvas (JPEG) si le navigateur supporte le format, sinon fallback FileReader brut
-  // Le serveur convertira en JPEG via sharp si necessaire
+  // Convertir un fichier image en base64
+  // Pour les formats non supportés par le navigateur (HEIC), on envoie le fichier brut
+  // et le serveur se charge de la conversion
   const convertToBase64 = useCallback((file) => {
     const objectUrl = URL.createObjectURL(file);
 
-    // Toujours lire le fichier brut en base64 comme fallback
     const reader = new FileReader();
     reader.onload = (ev) => {
       const rawBase64 = ev.target.result.split(',')[1];
 
-      // Tenter de charger dans un <img> pour preview et conversion canvas
+      // Tenter de charger l'image dans le navigateur
       const img = new Image();
       img.onload = () => {
-        // Le navigateur supporte ce format : preview + conversion JPEG via canvas
-        setImagePreview(objectUrl);
-
-        const MAX_SIZE = 2048;
-        let w = img.width;
-        let h = img.height;
-        if (w > MAX_SIZE || h > MAX_SIZE) {
-          const ratio = Math.min(MAX_SIZE / w, MAX_SIZE / h);
-          w = Math.round(w * ratio);
-          h = Math.round(h * ratio);
+        // Le navigateur arrive à décoder l'image : on la convertit en JPEG via canvas
+        try {
+          const canvas = document.createElement('canvas');
+          const maxSize = 2048;
+          let w = img.width;
+          let h = img.height;
+          if (w > maxSize || h > maxSize) {
+            const ratio = Math.min(maxSize / w, maxSize / h);
+            w = Math.round(w * ratio);
+            h = Math.round(h * ratio);
+          }
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, w, h);
+          const jpegDataUrl = canvas.toDataURL('image/jpeg', 0.92);
+          setImageBase64(jpegDataUrl.split(',')[1]);
+          setImagePreview(objectUrl);
+        } catch {
+          // Fallback : envoyer tel quel
+          setImageBase64(rawBase64);
+          setImagePreview(objectUrl);
         }
-
-        const canvas = document.createElement('canvas');
-        canvas.width = w;
-        canvas.height = h;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, w, h);
-        const jpegDataUrl = canvas.toDataURL('image/jpeg', 0.92);
-        setImageBase64(jpegDataUrl.split(',')[1]);
       };
-
       img.onerror = () => {
         // Le navigateur ne supporte pas ce format (ex: HEIC sur Chrome desktop)
-        // On envoie les bytes bruts, le serveur convertira via sharp
+        // On envoie les bytes bruts, le serveur convertira
         setImagePreview(null);
         setImageBase64(rawBase64);
       };
-
       img.src = objectUrl;
     };
     reader.readAsDataURL(file);
   }, []);
 
-  // Handle file upload
+  // Gestion du changement de fichier
   const handleFileChange = useCallback((e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -150,16 +151,16 @@ export default function PhotoshootApp() {
     convertToBase64(file);
   }, [convertToBase64]);
 
-  // Handle drag & drop
+  // Gestion du drag & drop
   const handleDrop = useCallback((e) => {
     e.preventDefault();
     const file = e.dataTransfer.files?.[0];
-    if (!file) return;
+    if (!file || !file.type.startsWith('image/')) return;
     setImageFile(file);
     convertToBase64(file);
   }, [convertToBase64]);
 
-  // Analyze photo (morphological analysis)
+  // Analyser la photo (analyse morphologique)
   const handleAnalyze = async () => {
     if (!imageBase64) return;
     setAnalyzing(true);
@@ -174,13 +175,14 @@ export default function PhotoshootApp() {
       setAnalysis(data.analysis);
       setStep(1);
     } catch (err) {
-      alert('Erreur d\'analyse : ' + err.message);
+      alert('Une erreur est survenue lors de l\'analyse. Veuillez réessayer.');
+      console.error('Analyze error:', err);
     } finally {
       setAnalyzing(false);
     }
   };
 
-  // Generate images for all prompts in the objective
+  // Générer les images pour tous les prompts de l'objectif
   const handleGenerate = async () => {
     if (!selectedObjective || !imageBase64) return;
 
@@ -191,10 +193,10 @@ export default function PhotoshootApp() {
     setGenerating(true);
     setResults({});
 
-    // Passer l'analyse morphologique COMPLETE a Gemini (pas juste la derniere ligne)
-    const subjectDesc = analysis || '';
+    // Passer l'analyse morphologique complète pour enrichir les prompts
+    const subjectDesc = analysis || 'person';
 
-    // Generate sequentially to avoid rate limits
+    // Générer séquentiellement pour éviter les limites de débit
     for (const prompt of objective.prompts) {
       setPromptStatuses(prev => ({ ...prev, [prompt.id]: 'loading' }));
 
@@ -227,7 +229,7 @@ export default function PhotoshootApp() {
     setStep(3);
   };
 
-  // Download single image
+  // Télécharger une image
   const downloadImage = (dataUrl, name) => {
     const a = document.createElement('a');
     a.href = dataUrl;
@@ -235,7 +237,7 @@ export default function PhotoshootApp() {
     a.click();
   };
 
-  // Download all images
+  // Télécharger toutes les images
   const downloadAll = () => {
     Object.entries(results).forEach(([promptId, images]) => {
       const prompt = OBJECTIVES.find(o => o.id === selectedObjective)
@@ -248,7 +250,7 @@ export default function PhotoshootApp() {
     });
   };
 
-  // Reset
+  // Recommencer
   const handleReset = () => {
     setStep(0);
     setImageFile(null);
@@ -264,12 +266,12 @@ export default function PhotoshootApp() {
 
   return (
     <>
-      {/* Tricolor bar top */}
+      {/* Barre tricolore haut */}
       <div className="tricolor-bar">
         <span /><span /><span />
       </div>
 
-      {/* Nav */}
+      {/* Navigation */}
       <nav className="nav">
         <div className="nav-inner">
           <a className="nav-logo" href="#" onClick={handleReset}>
@@ -285,7 +287,7 @@ export default function PhotoshootApp() {
         </div>
       </nav>
 
-      {/* Main */}
+      {/* Contenu principal */}
       <main>
         {/* Hero + Stepper */}
         <section className="section section--hero section-glow">
@@ -293,15 +295,15 @@ export default function PhotoshootApp() {
             <div className="animate-hero">
               <div className="badge" style={{ marginBottom: '24px' }}>
                 <span className="badge-dot" />
-                Propulse par Gemini Flash Image
+                Propulsé par Gemini
               </div>
               <h1 style={{ marginBottom: '16px' }}>
                 Vos photos <em>professionnelles</em>,{' '}
-                generees par IA
+                générées par IA
               </h1>
               <p style={{ color: 'var(--text-muted)', margin: '0 auto 40px', fontSize: '18px' }}>
-                Uploadez votre photo, choisissez un objectif, recevez vos photos en quelques minutes.
-                Chaque image preserve votre identite et le grain naturel d'un appareil professionnel.
+                Importez votre photo, choisissez un objectif, recevez vos clichés en quelques minutes.
+                Chaque image préserve votre identité et le grain naturel d'un appareil professionnel.
               </p>
             </div>
 
@@ -324,12 +326,12 @@ export default function PhotoshootApp() {
 
         <div className="divider" />
 
-        {/* Step 0: Upload */}
+        {/* Étape 0 : Import de la photo */}
         {step === 0 && (
           <section className="section animate-fade">
             <div className="container" style={{ maxWidth: '640px' }}>
               <h2 style={{ textAlign: 'center', marginBottom: '32px' }}>
-                Uploadez votre <em>photo</em>
+                Importez votre <em>photo</em>
               </h2>
 
               <label
@@ -339,20 +341,19 @@ export default function PhotoshootApp() {
                 onDragOver={(e) => e.preventDefault()}
               >
                 {imagePreview ? (
-                  <img src={imagePreview} alt="Preview" className="upload-preview" />
+                  <img src={imagePreview} alt="Aperçu de votre photo" className="upload-preview" />
                 ) : imageBase64 ? (
-                  <div style={{ padding: '40px 20px', textAlign: 'center' }}>
-                    <div className="upload-icon" style={{ marginBottom: '16px' }}>
-                      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-                        <polyline points="22 4 12 14.01 9 11.01" />
+                  <div className="upload-heic-placeholder">
+                    <div className="upload-icon">
+                      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="20 6 9 17 4 12" />
                       </svg>
                     </div>
-                    <p style={{ color: 'var(--text)', fontWeight: 500, margin: '0 auto 8px' }}>
-                      {imageFile?.name || 'Photo chargee'}
+                    <p style={{ color: 'var(--text)', fontWeight: 500, marginBottom: '8px', margin: '0 auto' }}>
+                      {imageFile?.name || 'Photo chargée'}
                     </p>
-                    <p style={{ fontSize: '13px', color: 'var(--text-muted)', margin: '0 auto' }}>
-                      Format HEIC detecte - la conversion sera faite cote serveur
+                    <p style={{ fontSize: '14px', color: 'var(--text-muted)', margin: '8px auto 0' }}>
+                      Photo prête pour l'analyse
                     </p>
                   </div>
                 ) : (
@@ -368,15 +369,15 @@ export default function PhotoshootApp() {
                       Cliquez ou glissez votre photo ici
                     </p>
                     <p style={{ fontSize: '14px', color: 'var(--text-muted)', margin: '8px auto 0' }}>
-                      JPG, PNG, WebP ou HEIC - Photo de face ou trois-quarts
+                      Tous les formats acceptés - Photo de face ou trois-quarts
                     </p>
                   </>
                 )}
                 <input
-                  ref={fileInputRef}
                   id="photo-upload"
+                  ref={fileInputRef}
                   type="file"
-                  accept="image/*,.heic,.heif"
+                  accept="image/*"
                   onChange={handleFileChange}
                   style={{ display: 'none' }}
                 />
@@ -410,7 +411,7 @@ export default function PhotoshootApp() {
           </section>
         )}
 
-        {/* Step 1: Objective */}
+        {/* Étape 1 : Choix de l'objectif */}
         {step === 1 && (
           <section className="section animate-fade">
             <div className="container container--wide">
@@ -418,7 +419,7 @@ export default function PhotoshootApp() {
                 Quel est votre <em>objectif</em> ?
               </h2>
               <p style={{ textAlign: 'center', color: 'var(--text-muted)', margin: '0 auto 40px', fontSize: '16px' }}>
-                Chaque objectif active un set de prompts optimise pour l'usage vise.
+                Chaque objectif active un ensemble de styles optimisés pour l'usage visé.
               </p>
 
               <div className="objectives-grid">
@@ -432,7 +433,7 @@ export default function PhotoshootApp() {
                     <h3>{obj.label}</h3>
                     <p>{obj.description}</p>
                     <p style={{ fontSize: '13px', color: 'var(--accent)', marginTop: '8px' }}>
-                      {obj.prompts.length} prompt{obj.prompts.length > 1 ? 's' : ''} -&gt; {obj.prompts.length * 4} photos
+                      {obj.prompts.length} style{obj.prompts.length > 1 ? 's' : ''} → {obj.prompts.length * 4} photos
                     </p>
                   </div>
                 ))}
@@ -444,7 +445,7 @@ export default function PhotoshootApp() {
                     className="btn btn--orange btn--large"
                     onClick={handleGenerate}
                   >
-                    Lancer la generation ({objective?.prompts.length * 4} photos)
+                    Lancer la génération ({objective?.prompts.length * 4} photos)
                   </button>
                 </div>
               )}
@@ -452,25 +453,25 @@ export default function PhotoshootApp() {
           </section>
         )}
 
-        {/* Step 2: Generating */}
+        {/* Étapes 2 et 3 : Génération et résultats */}
         {(step === 2 || step === 3) && objective && (
           <section className="section animate-fade">
             <div className="container" style={{ maxWidth: '720px' }}>
               <h2 style={{ textAlign: 'center', marginBottom: '32px' }}>
                 {step === 2 ? (
-                  <>Generation <em>en cours</em>...</>
+                  <>Génération <em>en cours</em>...</>
                 ) : (
-                  <>Vos photos sont <em>pretes</em></>
+                  <>Vos photos sont <em>prêtes</em></>
                 )}
               </h2>
 
-              {/* Prompt status list */}
+              {/* Liste des statuts par style */}
               <div className="prompt-list">
                 {objective.prompts.map((prompt) => {
                   const status = promptStatuses[prompt.id] || 'pending';
                   const statusLabels = {
                     pending: 'En attente',
-                    loading: 'Generation...',
+                    loading: 'Génération...',
                     done: '4 photos',
                     error: 'Erreur',
                   };
@@ -479,7 +480,7 @@ export default function PhotoshootApp() {
                       <div className="prompt-info">
                         <div className="prompt-color-dot" style={{ backgroundColor: prompt.color }} />
                         <div className="prompt-meta">
-                          <h4>Prompt {prompt.id} - {prompt.name}</h4>
+                          <h4>{prompt.name}</h4>
                           <p>{prompt.desc}</p>
                         </div>
                       </div>
@@ -492,7 +493,7 @@ export default function PhotoshootApp() {
                 })}
               </div>
 
-              {/* Results */}
+              {/* Résultats */}
               {Object.keys(results).length > 0 && (
                 <div className="results-section">
                   <div className="divider" style={{ margin: '32px 0' }} />
@@ -500,7 +501,7 @@ export default function PhotoshootApp() {
                   {step === 3 && (
                     <div style={{ textAlign: 'center', marginBottom: '32px' }}>
                       <button className="btn btn--primary btn--large" onClick={downloadAll}>
-                        Telecharger toutes les photos
+                        Télécharger toutes les photos
                       </button>
                     </div>
                   )}
@@ -519,7 +520,7 @@ export default function PhotoshootApp() {
                             <img
                               key={i}
                               src={img}
-                              alt={`${prompt.name} - ${i + 1}`}
+                              alt={`${prompt.name} - variante ${i + 1}`}
                               className="result-image"
                               onClick={() => setLightboxImage(img)}
                             />
@@ -535,17 +536,17 @@ export default function PhotoshootApp() {
         )}
       </main>
 
-      {/* Footer */}
+      {/* Pied de page */}
       <div className="divider" />
       <footer className="footer">
         <div className="container">
           <p>
-            Photoshoot AI - Propulse par Google Gemini Flash Image + GPT-5.4-nano
+            Photoshoot AI - Propulsé par Google Gemini
           </p>
         </div>
       </footer>
 
-      {/* Tricolor bar bottom */}
+      {/* Barre tricolore bas */}
       <div className="tricolor-bar">
         <span /><span /><span />
       </div>
@@ -553,7 +554,7 @@ export default function PhotoshootApp() {
       {/* Lightbox */}
       {lightboxImage && (
         <div className="lightbox" onClick={() => setLightboxImage(null)}>
-          <img src={lightboxImage} alt="Preview" />
+          <img src={lightboxImage} alt="Aperçu en grand" />
         </div>
       )}
     </>
