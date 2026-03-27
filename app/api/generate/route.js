@@ -1,12 +1,12 @@
 import { generateImages, ensureJpeg } from '../../../lib/vertex-ai';
-import { PROMPTS, enrichPrompt } from '../../../lib/prompts';
+import { PROMPTS } from '../../../lib/prompts';
 import { NextResponse } from 'next/server';
 
 export const maxDuration = 120; // 2 min timeout pour la génération
 
 export async function POST(request) {
   try {
-    const { promptId, imageBase64, subjectDescription } = await request.json();
+    const { promptId, imageBase64 } = await request.json();
 
     if (!imageBase64) {
       return NextResponse.json({ error: 'Image requise' }, { status: 400 });
@@ -24,11 +24,9 @@ export async function POST(request) {
     // Convertir en JPEG (gère HEIC, PNG, WebP, etc.)
     const jpegBase64 = await ensureJpeg(imageBase64);
 
-    // Enrichir le prompt avec la description morphologique complète
-    const fullPrompt = enrichPrompt(prompt.prompt, subjectDescription);
-
-    // Générer 2 images par prompt (mode test, réduit le coût par 2)
-    const images = await generateImages(fullPrompt, jpegBase64, 2);
+    // Gemini reçoit directement le prompt + l'image de référence
+    // Pas d'analyse GPT intermédiaire, Gemini interprète la personne visuellement
+    const images = await generateImages(prompt.prompt, jpegBase64, 2);
 
     return NextResponse.json({
       promptId: prompt.id,
