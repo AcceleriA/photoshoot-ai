@@ -95,33 +95,51 @@ export default function PhotoshootApp() {
   const [lightboxImage, setLightboxImage] = useState(null);
   const fileInputRef = useRef(null);
 
-  // Convertit toute image (y compris HEIC iPhone) en JPEG base64 via canvas
-  const convertToJpegBase64 = useCallback((file) => {
+  // Convertit toute image en base64 exploitable par les API
+  // Tente canvas (JPEG) si le navigateur supporte le format, sinon fallback FileReader brut
+  // Le serveur convertira en JPEG via sharp si necessaire
+  const convertToBase64 = useCallback((file) => {
     const objectUrl = URL.createObjectURL(file);
-    setImagePreview(objectUrl);
 
-    const img = new Image();
-    img.onload = () => {
-      // Limiter a 2048px max pour eviter les problemes memoire
-      const MAX_SIZE = 2048;
-      let w = img.width;
-      let h = img.height;
-      if (w > MAX_SIZE || h > MAX_SIZE) {
-        const ratio = Math.min(MAX_SIZE / w, MAX_SIZE / h);
-        w = Math.round(w * ratio);
-        h = Math.round(h * ratio);
-      }
+    // Toujours lire le fichier brut en base64 comme fallback
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const rawBase64 = ev.target.result.split(',')[1];
 
-      const canvas = document.createElement('canvas');
-      canvas.width = w;
-      canvas.height = h;
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(img, 0, 0, w, h);
-      const jpegDataUrl = canvas.toDataURL('image/jpeg', 0.92);
-      const base64 = jpegDataUrl.split(',')[1];
-      setImageBase64(base64);
+      // Tenter de charger dans un <img> pour preview et conversion canvas
+      const img = new Image();
+      img.onload = () => {
+        // Le navigateur supporte ce format : preview + conversion JPEG via canvas
+        setImagePreview(objectUrl);
+
+        const MAX_SIZE = 2048;
+        let w = img.width;
+        let h = img.height;
+        if (w > MAX_SIZE || h > MAX_SIZE) {
+          const ratio = Math.min(MAX_SIZE / w, MAX_SIZE / h);
+          w = Math.round(w * ratio);
+          h = Math.round(h * ratio);
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, w, h);
+        const jpegDataUrl = canvas.toDataURL('image/jpeg', 0.92);
+        setImageBase64(jpegDataUrl.split(',')[1]);
+      };
+
+      img.onerror = () => {
+        // Le navigateur ne supporte pas ce format (ex: HEIC sur Chrome desktop)
+        // On envoie les bytes bruts, le serveur convertira via sharp
+        setImagePreview(null);
+        setImageBase64(rawBase64);
+      };
+
+      img.src = objectUrl;
     };
-    img.src = objectUrl;
+    reader.readAsDataURL(file);
   }, []);
 
   // Handle file upload
@@ -129,8 +147,8 @@ export default function PhotoshootApp() {
     const file = e.target.files?.[0];
     if (!file) return;
     setImageFile(file);
-    convertToJpegBase64(file);
-  }, [convertToJpegBase64]);
+    convertToBase64(file);
+  }, [convertToBase64]);
 
   // Handle drag & drop
   const handleDrop = useCallback((e) => {
@@ -138,8 +156,8 @@ export default function PhotoshootApp() {
     const file = e.dataTransfer.files?.[0];
     if (!file) return;
     setImageFile(file);
-    convertToJpegBase64(file);
-  }, [convertToJpegBase64]);
+    convertToBase64(file);
+  }, [convertToBase64]);
 
   // Analyze photo (morphological analysis)
   const handleAnalyze = async () => {
@@ -316,12 +334,27 @@ export default function PhotoshootApp() {
 
               <label
                 htmlFor="photo-upload"
-                className={`upload-zone ${imagePreview ? 'has-image' : ''}`}
+                className={`upload-zone ${(imagePreview || imageBase64) ? 'has-image' : ''}`}
                 onDrop={handleDrop}
                 onDragOver={(e) => e.preventDefault()}
               >
                 {imagePreview ? (
                   <img src={imagePreview} alt="Preview" className="upload-preview" />
+                ) : imageBase64 ? (
+                  <div style={{ padding: '40px 20px', textAlign: 'center' }}>
+                    <div className="upload-icon" style={{ marginBottom: '16px' }}>
+                      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                        <polyline points="22 4 12 14.01 9 11.01" />
+                      </svg>
+                    </div>
+                    <p style={{ color: 'var(--text)', fontWeight: 500, margin: '0 auto 8px' }}>
+                      {imageFile?.name || 'Photo chargee'}
+                    </p>
+                    <p style={{ fontSize: '13px', color: 'var(--text-muted)', margin: '0 auto' }}>
+                      Format HEIC detecte - la conversion sera faite cote serveur
+                    </p>
+                  </div>
                 ) : (
                   <>
                     <div className="upload-icon">
@@ -349,7 +382,7 @@ export default function PhotoshootApp() {
                 />
               </label>
 
-              {imagePreview && (
+              {(imagePreview || imageBase64) && (
                 <div style={{ textAlign: 'center', marginTop: '24px' }}>
                   <button
                     className="btn btn--primary btn--large"
