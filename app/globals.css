@@ -166,6 +166,7 @@ p { max-width: var(--container-narrow); }
 
 /* Upload zone */
 .upload-zone {
+  display: block;
   border: 2px dashed var(--card-border);
   border-radius: var(--radius-lg);
   padding: 64px 32px;
