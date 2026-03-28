@@ -167,6 +167,9 @@ export default function PhotoshootApp() {
     setPromptErrors({});
 
     const imagesBase64 = images.map(img => img.base64);
+    // Si toutes les images ont été converties via canvas, elles sont déjà en JPEG
+    // Pas besoin de reconvertir côté serveur (économise ~500ms par prompt)
+    const jpegReady = images.every(img => img.preview !== null);
 
     // Générer séquentiellement pour éviter les limites de débit
     for (const prompt of objective.prompts) {
@@ -179,6 +182,7 @@ export default function PhotoshootApp() {
           body: JSON.stringify({
             promptId: prompt.id,
             imagesBase64,
+            jpegReady,
             sampleCount,
           }),
         });

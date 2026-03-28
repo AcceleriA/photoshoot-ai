@@ -11,6 +11,7 @@ export async function POST(request) {
       promptId,
       imagesBase64,       // Array de base64 (multi-images)
       imageBase64,        // Rétro-compatibilité (single image)
+      jpegReady,          // true si les images sont déjà converties en JPEG
       subjectDescription,
       sampleCount: requestedCount,
     } = body;
@@ -40,10 +41,11 @@ export async function POST(request) {
       );
     }
 
-    // Convertir toutes les images en JPEG
-    const jpegImages = await Promise.all(
-      rawImages.map(img => ensureJpeg(img))
-    );
+    // Convertir en JPEG sauf si le client signale que c'est déjà fait
+    // Le client canvas produit du JPEG, pas besoin de reconvertir à chaque prompt
+    const jpegImages = jpegReady
+      ? rawImages
+      : await Promise.all(rawImages.map(img => ensureJpeg(img)));
 
     // Enrichir le prompt avec la description morphologique si fournie
     const fullPrompt = enrichPrompt(prompt.prompt, subjectDescription);
