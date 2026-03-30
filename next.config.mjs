@@ -1,15 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  experimental: {
-    serverActions: true,
-  },
-
-  // Limite la taille du body JSON des API routes (50 Mo)
-  api: {
-    bodyParser: {
-      sizeLimit: '50mb',
-    },
-  },
+  // Note : en App Router, la taille du body est gérée par Vercel (4.5MB Hobby, 100MB Pro)
+  // L'ancienne clé 'api.bodyParser' n'est valide qu'en Pages Router et a été retirée.
 
   // Headers de sécurité appliqués à toutes les réponses
   async headers() {

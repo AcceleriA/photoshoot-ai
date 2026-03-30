@@ -33,16 +33,8 @@ export function middleware(request) {
     const origin = request.headers.get('origin');
     const host = request.headers.get('host');
 
-    // Bloquer si origin absent (requête forgée, curl sans origin)
-    if (!origin) {
-      return NextResponse.json(
-        { error: 'Header Origin manquant.' },
-        { status: 403 }
-      );
-    }
-
-    // Vérifier que l'origin correspond au host
-    if (host) {
+    // Vérifier Origin quand présent (certains navigateurs/proxies l'omettent pour same-origin)
+    if (origin && host) {
       try {
         const originHost = new URL(origin).host;
         if (originHost !== host) {

@@ -217,6 +217,16 @@ export default function PhotoshootApp() {
     const imagesBase64 = images.map(img => img.base64);
     const jpegReady = images.every(img => img.preview !== null);
 
+    // Vérifier la taille totale du payload (limite Vercel ~4.5MB)
+    const totalBase64Chars = imagesBase64.reduce((sum, b64) => sum + (b64?.length || 0), 0);
+    const estimatedPayloadMB = (totalBase64Chars * 0.75) / (1024 * 1024);
+    if (estimatedPayloadMB > 4) {
+      setGenerating(false);
+      setStep(1);
+      alert(`Les images totalisent ~${estimatedPayloadMB.toFixed(1)} Mo, ce qui dépasse la limite serveur (4 Mo). Essayez avec moins de photos ou des photos plus légères (JPEG au lieu de HEIC).`);
+      return;
+    }
+
     let successCount = 0;
 
     // Générer séquentiellement pour éviter les limites de débit
