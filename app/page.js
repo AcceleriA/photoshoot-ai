@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useCallback, useEffect } from 'react';
+import heic2any from 'heic2any';
 
 const STEPS = ['Photos', 'Objectif', 'Génération', 'Résultats'];
 
@@ -19,6 +20,12 @@ function isAllowedFile(file) {
   const extOk = ALLOWED_EXTENSIONS.some(ext => nameLC.endsWith(ext));
   const mimeOk = ALLOWED_MIME_TYPES.includes(file.type) || file.type === '';
   return (extOk || mimeOk) && file.size <= MAX_FILE_SIZE;
+}
+
+function isHeicFile(file) {
+  const nameLC = file.name.toLowerCase();
+  return nameLC.endsWith('.heic') || nameLC.endsWith('.heif') ||
+    file.type === 'image/heic' || file.type === 'image/heif';
 }
 
 function isValidDataUrl(url) {
@@ -67,30 +74,16 @@ export default function PhotoshootApp() {
   // Gestion des images (multi-upload avec nettoyage mémoire)
   // ============================================================
 
-  // Convertir un fichier en base64 et l'ajouter à la liste
-  const processFile = useCallback((file) => {
-    const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-    setIsProcessing(true);
-
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const rawBase64 = ev.target.result.split(',')[1];
-      const objectUrl = URL.createObjectURL(file);
-
-      // Tenter de charger dans le navigateur pour preview + conversion JPEG
+  // Convertir un Blob en base64 JPEG via canvas (redim max 2048px)
+  const blobToJpegBase64 = useCallback((blob) => {
+    return new Promise((resolve) => {
+      const objectUrl = URL.createObjectURL(blob);
       const img = new Image();
-      // Timeout de 15s sur le chargement image (HEIC lourds, connexion lente)
       const timeout = setTimeout(() => {
         img.onload = null;
         img.onerror = null;
-        // Timeout : garder le base64 brut sans preview
-        setImages(prev => [...prev, {
-          id,
-          file,
-          preview: null,
-          base64: rawBase64,
-        }]);
-        setIsProcessing(false);
+        URL.revokeObjectURL(objectUrl);
+        resolve({ preview: null, base64: null });
       }, 15000);
 
       img.onload = () => {
@@ -109,40 +102,60 @@ export default function PhotoshootApp() {
           canvas.height = h;
           const ctx = canvas.getContext('2d');
           ctx.drawImage(img, 0, 0, w, h);
-          const jpegDataUrl = canvas.toDataURL('image/jpeg', 0.92);
-
-          setImages(prev => [...prev, {
-            id,
-            file,
-            preview: objectUrl,
-            base64: jpegDataUrl.split(',')[1],
-          }]);
+          const jpegDataUrl = canvas.toDataURL('image/jpeg', 0.85);
+          resolve({ preview: objectUrl, base64: jpegDataUrl.split(',')[1] });
         } catch {
-          setImages(prev => [...prev, {
-            id,
-            file,
-            preview: objectUrl,
-            base64: rawBase64,
-          }]);
+          URL.revokeObjectURL(objectUrl);
+          resolve({ preview: null, base64: null });
         }
-        setIsProcessing(false);
       };
       img.onerror = () => {
         clearTimeout(timeout);
-        // Format non supporté par le navigateur (HEIC)
-        // Pas de preview mais base64 brut pour le serveur
-        setImages(prev => [...prev, {
-          id,
-          file,
-          preview: null,
-          base64: rawBase64,
-        }]);
-        setIsProcessing(false);
+        URL.revokeObjectURL(objectUrl);
+        resolve({ preview: null, base64: null });
       };
       img.src = objectUrl;
-    };
-    reader.readAsDataURL(file);
+    });
   }, []);
+
+  // Convertir un fichier en base64 et l'ajouter à la liste
+  const processFile = useCallback(async (file) => {
+    const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    setIsProcessing(true);
+
+    try {
+      // 1) Tenter la conversion directe via canvas (fonctionne pour JPEG, PNG, WebP, et HEIC sur Safari)
+      let result = await blobToJpegBase64(file);
+
+      // 2) Si le navigateur n'a pas pu decoder (HEIC sur Chrome/Firefox), convertir via heic2any
+      if (!result.base64 && isHeicFile(file)) {
+        try {
+          const jpegBlob = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.85 });
+          const converted = Array.isArray(jpegBlob) ? jpegBlob[0] : jpegBlob;
+          result = await blobToJpegBase64(converted);
+        } catch (heicErr) {
+          console.error('HEIC conversion failed:', heicErr);
+        }
+      }
+
+      // 3) Ajouter l'image (compressée ou fallback raw)
+      if (result.base64) {
+        setImages(prev => [...prev, { id, file, preview: result.preview, base64: result.base64 }]);
+      } else {
+        // Dernier recours : base64 brut (sera probablement trop gros)
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          const rawBase64 = ev.target.result.split(',')[1];
+          setImages(prev => [...prev, { id, file, preview: null, base64: rawBase64 }]);
+        };
+        reader.readAsDataURL(file);
+      }
+    } catch (err) {
+      console.error('processFile error:', err);
+    } finally {
+      setIsProcessing(false);
+    }
+  }, [blobToJpegBase64]);
 
   // Supprimer une image + libérer l'URL en mémoire
   const removeImage = useCallback((id) => {
