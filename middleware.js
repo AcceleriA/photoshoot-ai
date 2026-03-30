@@ -21,10 +21,11 @@ export function middleware(request) {
     'Strict-Transport-Security',
     'max-age=31536000; includeSubDomains'
   );
-  // CSP : pas de unsafe-inline/unsafe-eval sur scripts (Next.js utilise des nonces en prod)
+  // CSP : unsafe-inline nécessaire pour script-src car Next.js injecte des scripts inline
+  // pour le hydration (sans système de nonces configuré). unsafe-eval reste interdit.
   response.headers.set(
     'Content-Security-Policy',
-    "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://aiplatform.googleapis.com"
+    "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://aiplatform.googleapis.com"
   );
 
   // ── CSRF protection (POST uniquement) ─────────────────
