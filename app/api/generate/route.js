@@ -93,16 +93,21 @@ export async function POST(request) {
     }
 
     // ── Validation taille des images ──────────────────────
-    // Chaque base64 string correspond à ~75% de la taille décodée
+    // base64 : 4 chars = 3 bytes, donc length * 0.75
+    // Gère le cas data URL prefix (data:image/jpeg;base64,...)
     let totalSize = 0;
-    for (const img of rawImages) {
+    for (let i = 0; i < rawImages.length; i++) {
+      const img = rawImages[i];
       if (typeof img !== 'string') {
         return NextResponse.json(
           { error: 'Chaque image doit être une chaîne base64.' },
           { status: 400 }
         );
       }
-      const estimatedBytes = Math.ceil(img.length * 0.75);
+      // Retirer le prefix data URL si présent
+      const base64Data = img.startsWith('data:') ? img.split(',')[1] || '' : img;
+      rawImages[i] = base64Data; // normaliser pour la suite
+      const estimatedBytes = Math.ceil(base64Data.length * 0.75);
       if (estimatedBytes > LIMITS.MAX_IMAGE_SIZE_BYTES) {
         return NextResponse.json(
           { error: 'Une image dépasse la taille maximale autorisée (10 Mo).' },
@@ -140,14 +145,28 @@ export async function POST(request) {
     // ── Enrichir le prompt ────────────────────────────────
     const fullPrompt = enrichPrompt(prompt.prompt, sanitizedDescription);
 
+    // ── Cap longueur du prompt enrichi ────────────────────
+    if (fullPrompt.length > 10000) {
+      return NextResponse.json(
+        { error: 'Prompt trop long après enrichissement.' },
+        { status: 400 }
+      );
+    }
+
     // ── Générer les images (avec retry intégré) ───────────
     const { images, errors } = await generateImages(fullPrompt, jpegImages, sampleCount);
 
     // ── Validation MIME des images générées ────────────────
     const ALLOWED_MIME = ['image/png', 'image/jpeg', 'image/webp'];
+    const BASE64_RE = /^[A-Za-z0-9+/\n\r]+=*$/;
     const validImages = images.filter(img => {
       const mime = img.mimeType || 'image/png';
-      return ALLOWED_MIME.includes(mime) && img.data && img.data.length > 0;
+      return (
+        ALLOWED_MIME.includes(mime) &&
+        typeof img.data === 'string' &&
+        img.data.length > 0 &&
+        BASE64_RE.test(img.data)
+      );
     });
 
     return NextResponse.json({

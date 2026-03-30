@@ -39,7 +39,9 @@ export default function PhotoshootApp() {
   const [promptErrors, setPromptErrors] = useState({});
   const [results, setResults] = useState({});
   const [lightboxImage, setLightboxImage] = useState(null);
+  const [isProcessing, setIsProcessing] = useState(false);
   const fileInputRef = useRef(null);
+  const abortRef = useRef(null);
 
   // Config chargée depuis /api/config (source unique de vérité)
   const [objectives, setObjectives] = useState([]);
@@ -68,6 +70,7 @@ export default function PhotoshootApp() {
   // Convertir un fichier en base64 et l'ajouter à la liste
   const processFile = useCallback((file) => {
     const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    setIsProcessing(true);
 
     const reader = new FileReader();
     reader.onload = (ev) => {
@@ -76,7 +79,22 @@ export default function PhotoshootApp() {
 
       // Tenter de charger dans le navigateur pour preview + conversion JPEG
       const img = new Image();
+      // Timeout de 15s sur le chargement image (HEIC lourds, connexion lente)
+      const timeout = setTimeout(() => {
+        img.onload = null;
+        img.onerror = null;
+        // Timeout : garder le base64 brut sans preview
+        setImages(prev => [...prev, {
+          id,
+          file,
+          preview: null,
+          base64: rawBase64,
+        }]);
+        setIsProcessing(false);
+      }, 15000);
+
       img.onload = () => {
+        clearTimeout(timeout);
         try {
           const canvas = document.createElement('canvas');
           const maxSize = 2048;
@@ -107,8 +125,10 @@ export default function PhotoshootApp() {
             base64: rawBase64,
           }]);
         }
+        setIsProcessing(false);
       };
       img.onerror = () => {
+        clearTimeout(timeout);
         // Format non supporté par le navigateur (HEIC)
         // Pas de preview mais base64 brut pour le serveur
         setImages(prev => [...prev, {
@@ -117,6 +137,7 @@ export default function PhotoshootApp() {
           preview: null,
           base64: rawBase64,
         }]);
+        setIsProcessing(false);
       };
       img.src = objectUrl;
     };
@@ -182,18 +203,27 @@ export default function PhotoshootApp() {
     const objective = objectives.find(o => o.id === selectedObjective);
     if (!objective) return;
 
+    // Annuler toute génération précédente en cours
+    if (abortRef.current) abortRef.current.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     setStep(2);
     setGenerating(true);
     setResults({});
     setPromptErrors({});
+    setPromptStatuses({});
 
     const imagesBase64 = images.map(img => img.base64);
-    // Si toutes les images ont été converties via canvas, elles sont déjà en JPEG
-    // Pas besoin de reconvertir côté serveur (économise ~500ms par prompt)
     const jpegReady = images.every(img => img.preview !== null);
+
+    let successCount = 0;
 
     // Générer séquentiellement pour éviter les limites de débit
     for (const prompt of objective.prompts) {
+      // Vérifier si l'utilisateur a annulé
+      if (controller.signal.aborted) break;
+
       setPromptStatuses(prev => ({ ...prev, [prompt.id]: 'loading' }));
 
       try {
@@ -206,30 +236,56 @@ export default function PhotoshootApp() {
             jpegReady,
             sampleCount,
           }),
+          signal: controller.signal,
         });
+
+        // Gestion du rate limit 429
+        if (res.status === 429) {
+          const retryAfter = res.headers.get('Retry-After');
+          const waitSec = retryAfter ? parseInt(retryAfter, 10) : 60;
+          setPromptStatuses(prev => ({ ...prev, [prompt.id]: 'error' }));
+          setPromptErrors(prev => ({
+            ...prev,
+            [prompt.id]: `Limite atteinte. Réessayez dans ${waitSec}s.`,
+          }));
+          continue;
+        }
+
         const data = await res.json();
 
         if (data.error) {
           setPromptStatuses(prev => ({ ...prev, [prompt.id]: 'error' }));
           setPromptErrors(prev => ({ ...prev, [prompt.id]: data.error }));
         } else {
-          // Filtrer les data URLs : n'accepter que les MIME images valides
           const safeImages = (data.images || []).filter(url => isValidDataUrl(url));
           setPromptStatuses(prev => ({ ...prev, [prompt.id]: 'done' }));
           setResults(prev => ({ ...prev, [prompt.id]: safeImages }));
-          // Stocker les warnings si génération partielle
+          if (safeImages.length > 0) successCount++;
           if (data.warnings) {
-            setPromptErrors(prev => ({ ...prev, [prompt.id]: `${data.generated}/${data.requested} photos générées` }));
+            setPromptErrors(prev => ({
+              ...prev,
+              [prompt.id]: `${data.generated}/${data.requested} photos générées`,
+            }));
           }
         }
       } catch (err) {
+        if (err.name === 'AbortError') break;
         setPromptStatuses(prev => ({ ...prev, [prompt.id]: 'error' }));
-        setPromptErrors(prev => ({ ...prev, [prompt.id]: 'Erreur réseau. Vérifiez votre connexion.' }));
+        setPromptErrors(prev => ({
+          ...prev,
+          [prompt.id]: 'Erreur réseau. Vérifiez votre connexion.',
+        }));
         console.error(`Prompt ${prompt.id} error:`, err);
       }
     }
 
     setGenerating(false);
+
+    // Si tous les prompts ont échoué, rester sur step 2 avec message visible
+    // sinon passer aux résultats
+    if (successCount === 0 && !controller.signal.aborted) {
+      setPromptStatuses(prev => ({ ...prev, _allFailed: true }));
+    }
     setStep(3);
   };
 
@@ -248,12 +304,19 @@ export default function PhotoshootApp() {
     const objective = objectives.find(o => o.id === selectedObjective);
     if (!objective) return;
 
+    let delay = 0;
     Object.entries(results).forEach(([promptId, imgs]) => {
       const prompt = objective.prompts.find(p => p.id === parseInt(promptId));
+      if (!Array.isArray(imgs)) return;
       imgs.forEach((img, i) => {
         setTimeout(() => {
-          downloadImage(img, `photoshoot-${prompt?.name || promptId}-${i + 1}`);
-        }, i * 200);
+          try {
+            downloadImage(img, `photoshoot-${prompt?.name || promptId}-${i + 1}`);
+          } catch (err) {
+            console.error(`Download failed for ${promptId}-${i}:`, err);
+          }
+        }, delay);
+        delay += 200;
       });
     });
   };
@@ -263,6 +326,11 @@ export default function PhotoshootApp() {
   // ============================================================
 
   const handleReset = () => {
+    // Annuler toute génération en cours
+    if (abortRef.current) {
+      abortRef.current.abort();
+      abortRef.current = null;
+    }
     // Libérer les URLs en mémoire
     images.forEach(img => {
       if (img.preview) URL.revokeObjectURL(img.preview);
@@ -270,6 +338,7 @@ export default function PhotoshootApp() {
     setStep(0);
     setImages([]);
     setSelectedObjective(null);
+    setGenerating(false);
     setPromptStatuses({});
     setPromptErrors({});
     setResults({});
@@ -445,8 +514,9 @@ export default function PhotoshootApp() {
                   <button
                     className="btn btn--primary btn--large"
                     onClick={handleContinue}
+                    disabled={isProcessing}
                   >
-                    Choisir l'objectif
+                    {isProcessing ? 'Traitement en cours...' : 'Choisir l\'objectif'}
                   </button>
                 </div>
               )}
@@ -551,6 +621,21 @@ export default function PhotoshootApp() {
                   );
                 })}
               </div>
+
+              {/* Message si toutes les générations ont échoué */}
+              {step === 3 && Object.keys(results).length === 0 && promptStatuses._allFailed && (
+                <div style={{ textAlign: 'center', marginTop: '32px', padding: '24px', borderRadius: '12px', background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
+                  <p style={{ color: '#ef4444', fontSize: '16px', margin: '0 0 12px' }}>
+                    Toutes les generations ont echoue.
+                  </p>
+                  <p style={{ color: 'var(--text-muted)', fontSize: '14px', margin: '0 0 16px' }}>
+                    Verifiez votre connexion ou essayez avec d'autres photos.
+                  </p>
+                  <button className="btn btn--primary" onClick={handleReset}>
+                    Recommencer
+                  </button>
+                </div>
+              )}
 
               {/* Résultats */}
               {Object.keys(results).length > 0 && (

@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
 
 /**
- * Middleware Next.js — appliqué à toutes les routes /api/*
+ * Middleware Next.js — appliqué à toutes les routes
  *
  * Sécurité :
  * - Headers de sécurité (X-Frame-Options, CSP, HSTS, etc.)
- * - Protection CSRF (vérifie Origin/Referer sur les POST)
+ * - Protection CSRF (vérifie Origin sur les POST — bloque si absent)
  * - Authentification optionnelle via API_SECRET_KEY
  */
 export function middleware(request) {
@@ -21,22 +21,38 @@ export function middleware(request) {
     'Strict-Transport-Security',
     'max-age=31536000; includeSubDomains'
   );
+  // CSP : pas de unsafe-inline/unsafe-eval sur scripts (Next.js utilise des nonces en prod)
   response.headers.set(
     'Content-Security-Policy',
-    "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self'"
+    "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://aiplatform.googleapis.com"
   );
 
   // ── CSRF protection (POST uniquement) ─────────────────
-  if (request.method === 'POST') {
+  if (request.method === 'POST' && request.nextUrl.pathname.startsWith('/api/')) {
     const origin = request.headers.get('origin');
     const host = request.headers.get('host');
 
-    // En production, vérifier que l'origin correspond au host
-    if (origin && host) {
-      const originHost = new URL(origin).host;
-      if (originHost !== host) {
+    // Bloquer si origin absent (requête forgée, curl sans origin)
+    if (!origin) {
+      return NextResponse.json(
+        { error: 'Header Origin manquant.' },
+        { status: 403 }
+      );
+    }
+
+    // Vérifier que l'origin correspond au host
+    if (host) {
+      try {
+        const originHost = new URL(origin).host;
+        if (originHost !== host) {
+          return NextResponse.json(
+            { error: 'Requête cross-origin non autorisée.' },
+            { status: 403 }
+          );
+        }
+      } catch {
         return NextResponse.json(
-          { error: 'Requête cross-origin non autorisée.' },
+          { error: 'Header Origin invalide.' },
           { status: 403 }
         );
       }
@@ -48,7 +64,7 @@ export function middleware(request) {
     const apiKey = process.env.API_SECRET_KEY;
     if (apiKey) {
       const authHeader = request.headers.get('x-api-key');
-      if (authHeader !== apiKey) {
+      if (!authHeader || authHeader !== apiKey) {
         return NextResponse.json(
           { error: 'Clé API invalide ou manquante.' },
           { status: 401 }
