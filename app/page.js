@@ -5,6 +5,27 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 const STEPS = ['Photos', 'Objectif', 'Génération', 'Résultats'];
 
 // ============================================================
+// Sécurité : types MIME autorisés et taille max par fichier
+// ============================================================
+const ALLOWED_MIME_TYPES = [
+  'image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif',
+];
+const ALLOWED_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.webp', '.heic', '.heif'];
+const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20 Mo par fichier
+const ALLOWED_DATA_URL_PREFIXES = ['data:image/jpeg;', 'data:image/png;', 'data:image/webp;'];
+
+function isAllowedFile(file) {
+  const nameLC = file.name.toLowerCase();
+  const extOk = ALLOWED_EXTENSIONS.some(ext => nameLC.endsWith(ext));
+  const mimeOk = ALLOWED_MIME_TYPES.includes(file.type) || file.type === '';
+  return (extOk || mimeOk) && file.size <= MAX_FILE_SIZE;
+}
+
+function isValidDataUrl(url) {
+  return ALLOWED_DATA_URL_PREFIXES.some(prefix => url.startsWith(prefix));
+}
+
+// ============================================================
 // Composant principal
 // ============================================================
 export default function PhotoshootApp() {
@@ -126,7 +147,7 @@ export default function PhotoshootApp() {
   const handleFileChange = useCallback((e) => {
     const files = Array.from(e.target.files || []);
     files.forEach(file => {
-      if (file.type.startsWith('image/') || file.name.toLowerCase().endsWith('.heic')) {
+      if (isAllowedFile(file)) {
         processFile(file);
       }
     });
@@ -139,7 +160,7 @@ export default function PhotoshootApp() {
     e.preventDefault();
     const files = Array.from(e.dataTransfer.files || []);
     files.forEach(file => {
-      if (file.type.startsWith('image/') || file.name.toLowerCase().endsWith('.heic')) {
+      if (isAllowedFile(file)) {
         processFile(file);
       }
     });
@@ -192,8 +213,10 @@ export default function PhotoshootApp() {
           setPromptStatuses(prev => ({ ...prev, [prompt.id]: 'error' }));
           setPromptErrors(prev => ({ ...prev, [prompt.id]: data.error }));
         } else {
+          // Filtrer les data URLs : n'accepter que les MIME images valides
+          const safeImages = (data.images || []).filter(url => isValidDataUrl(url));
           setPromptStatuses(prev => ({ ...prev, [prompt.id]: 'done' }));
-          setResults(prev => ({ ...prev, [prompt.id]: data.images }));
+          setResults(prev => ({ ...prev, [prompt.id]: safeImages }));
           // Stocker les warnings si génération partielle
           if (data.warnings) {
             setPromptErrors(prev => ({ ...prev, [prompt.id]: `${data.generated}/${data.requested} photos générées` }));
