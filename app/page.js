@@ -389,12 +389,12 @@ export default function PhotoshootApp() {
       <nav className="nav">
         <div className="nav-inner">
           <a className="nav-logo" href="#" onClick={handleReset}>
-            Photoshoot <span className="a-orange">AI</span>
+            Headshot <span className="a-orange">Maker</span>
           </a>
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
             {step > 0 && (
               <button className="btn btn--ghost" onClick={handleReset} style={{ fontSize: '13px', padding: '8px 16px' }}>
-                Nouveau shooting
+                Nouvelle session
               </button>
             )}
           </div>
@@ -409,7 +409,7 @@ export default function PhotoshootApp() {
             <div className="animate-hero">
               <div className="badge" style={{ marginBottom: '24px' }}>
                 <span className="badge-dot" />
-                Propulsé par Gemini 3 Pro
+                Génération IA avancée
               </div>
               <h1 style={{ marginBottom: '16px' }}>
                 Vos photos <em>professionnelles</em>,{' '}
@@ -710,7 +710,7 @@ export default function PhotoshootApp() {
       <footer className="footer">
         <div className="container">
           <p>
-            Photoshoot AI - Propulsé par Gemini 3 Pro
+            Headshot Maker par AcceleriA
           </p>
         </div>
       </footer>

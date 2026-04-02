@@ -1,7 +1,7 @@
 import './globals.css';
 
 export const metadata = {
-  title: 'Photoshoot AI - Photos professionnelles par IA',
+  title: 'Headshot Maker - Photos professionnelles par IA',
   description: 'Uploadez votre photo, choisissez un objectif, recevez vos photos professionnelles generees par IA en quelques minutes.',
 };
 
