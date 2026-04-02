@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useRef, useCallback, useEffect } from 'react';
-import heic2any from 'heic2any';
+// heic2any accède à window au chargement — import dynamique pour éviter le crash SSR
+// L'import réel se fait dans processFile() via : const { default: heic2any } = await import('heic2any');
 
 const STEPS = ['Photos', 'Objectif', 'Génération', 'Résultats'];
 
@@ -130,6 +131,7 @@ export default function PhotoshootApp() {
       // 2) Si le navigateur n'a pas pu decoder (HEIC sur Chrome/Firefox), convertir via heic2any
       if (!result.base64 && isHeicFile(file)) {
         try {
+          const { default: heic2any } = await import('heic2any');
           const jpegBlob = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.85 });
           const converted = Array.isArray(jpegBlob) ? jpegBlob[0] : jpegBlob;
           result = await blobToJpegBase64(converted);
