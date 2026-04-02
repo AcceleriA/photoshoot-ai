@@ -12,7 +12,8 @@ export function middleware(request) {
   const response = NextResponse.next();
 
   // ── Security headers (toutes les routes) ──────────────
-  response.headers.set('X-Frame-Options', 'DENY');
+  // Autorise l'iframe depuis acceleria.co (page /tools)
+  response.headers.set('X-Frame-Options', 'SAMEORIGIN');
   response.headers.set('X-Content-Type-Options', 'nosniff');
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
   response.headers.set('X-DNS-Prefetch-Control', 'off');
@@ -25,7 +26,7 @@ export function middleware(request) {
   // pour le hydration (sans système de nonces configuré). unsafe-eval reste interdit.
   response.headers.set(
     'Content-Security-Policy',
-    "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://aiplatform.googleapis.com"
+    "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://aiplatform.googleapis.com; frame-ancestors 'self' https://acceleria.co https://www.acceleria.co"
   );
 
   // ── CSRF protection (POST uniquement) ─────────────────
