@@ -50,6 +50,27 @@ export default function PhotoshootApp() {
   const [isProcessing, setIsProcessing] = useState(false);
   const fileInputRef = useRef(null);
   const abortRef = useRef(null);
+  const completionSentRef = useRef(false);
+
+  // Notify parent (acceleria.co) when generation completes
+  useEffect(() => {
+    if (step === 3 && Object.keys(results).length > 0 && !completionSentRef.current) {
+      const totalPhotos = Object.values(results).reduce((sum, imgs) => sum + imgs.length, 0);
+      if (totalPhotos > 0) {
+        completionSentRef.current = true;
+        try {
+          window.parent.postMessage({
+            type: 'tool-completion',
+            payload: {
+              photosGenerated: totalPhotos,
+              objective: selectedObjective?.label || null,
+              completedAt: new Date().toISOString(),
+            },
+          }, 'https://www.acceleria.co');
+        } catch (_) { /* not embedded */ }
+      }
+    }
+  }, [step, results, selectedObjective]);
 
   // Config chargée depuis /api/config (source unique de vérité)
   const [objectives, setObjectives] = useState([]);
