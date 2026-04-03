@@ -1,8 +1,8 @@
 import './globals.css';
 
 export const metadata = {
-  title: 'Headshot Maker - Photos professionnelles par IA',
-  description: 'Uploadez votre photo, choisissez un objectif, recevez vos photos professionnelles generees par IA en quelques minutes.',
+  title: 'ProfilShot - Photos professionnelles par IA',
+  description: 'Uploadez votre photo, choisissez un objectif, recevez vos portraits professionnels générés par IA en quelques minutes.',
 };
 
 export default function RootLayout({ children }) {

@@ -36,7 +36,7 @@ function isValidDataUrl(url) {
 // ============================================================
 // Composant principal
 // ============================================================
-export default function PhotoshootApp() {
+export default function ProfilShotApp() {
   const [step, setStep] = useState(0);
 
   // Multi-images : array de { id, file, preview, base64 }
@@ -410,7 +410,7 @@ export default function PhotoshootApp() {
       <nav className="nav">
         <div className="nav-inner">
           <a className="nav-logo" href="#" onClick={handleReset}>
-            Headshot <span className="a-orange">Maker</span>
+            Profil<span className="a-orange">Shot</span>
           </a>
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
             {step > 0 && (
@@ -731,7 +731,7 @@ export default function PhotoshootApp() {
       <footer className="footer">
         <div className="container">
           <p>
-            Headshot Maker par AcceleriA
+            ProfilShot par AcceleriA
           </p>
         </div>
       </footer>
