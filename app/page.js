@@ -340,10 +340,34 @@ export default function ProfilShotApp() {
   // ============================================================
 
   const downloadImage = (dataUrl, name) => {
-    const a = document.createElement('a');
-    a.href = dataUrl;
-    a.download = `${name}.png`;
-    a.click();
+    try {
+      // Convert data URL to blob for reliable cross-browser/iframe download
+      const byteString = atob(dataUrl.split(',')[1]);
+      const mimeString = dataUrl.split(',')[0].split(':')[1].split(';')[0];
+      const ab = new ArrayBuffer(byteString.length);
+      const ia = new Uint8Array(ab);
+      for (let i = 0; i < byteString.length; i++) {
+        ia[i] = byteString.charCodeAt(i);
+      }
+      const blob = new Blob([ab], { type: mimeString });
+      const blobUrl = URL.createObjectURL(blob);
+
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = `${name}.png`;
+      document.body.appendChild(a);
+      a.click();
+
+      // Cleanup
+      setTimeout(() => {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(blobUrl);
+      }, 100);
+    } catch (err) {
+      console.error('Download error:', err);
+      // Fallback: open in new tab so user can long-press/save
+      window.open(dataUrl, '_blank');
+    }
   };
 
   const downloadAll = () => {
@@ -707,13 +731,48 @@ export default function ProfilShotApp() {
                         </h3>
                         <div className="results-grid">
                           {promptImages.map((img, i) => (
-                            <img
-                              key={i}
-                              src={img}
-                              alt={`${prompt.name} - variante ${i + 1}`}
-                              className="result-image"
-                              onClick={() => setLightboxImage(img)}
-                            />
+                            <div key={i} className="result-image-wrapper" style={{ position: 'relative' }}>
+                              <img
+                                src={img}
+                                alt={`${prompt.name} - variante ${i + 1}`}
+                                className="result-image"
+                                onClick={() => setLightboxImage(img)}
+                                style={{ cursor: 'pointer' }}
+                              />
+                              <button
+                                className="result-download-btn"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  downloadImage(img, `profilshot-${prompt.name || promptId}-${i + 1}`);
+                                }}
+                                title="Télécharger cette photo"
+                                style={{
+                                  position: 'absolute',
+                                  bottom: '8px',
+                                  right: '8px',
+                                  width: '36px',
+                                  height: '36px',
+                                  borderRadius: '10px',
+                                  border: 'none',
+                                  background: 'rgba(0,0,0,0.65)',
+                                  backdropFilter: 'blur(8px)',
+                                  color: '#fff',
+                                  cursor: 'pointer',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  transition: 'background 0.2s',
+                                }}
+                                onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(0,0,0,0.85)'}
+                                onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(0,0,0,0.65)'}
+                              >
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                  <polyline points="7 10 12 15 17 10" />
+                                  <line x1="12" y1="15" x2="12" y2="3" />
+                                </svg>
+                              </button>
+                            </div>
                           ))}
                         </div>
                       </div>
@@ -745,6 +804,38 @@ export default function ProfilShotApp() {
       {lightboxImage && (
         <div className="lightbox" onClick={() => setLightboxImage(null)}>
           <img src={lightboxImage} alt="Aperçu en grand" />
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              downloadImage(lightboxImage, `profilshot-${Date.now()}`);
+            }}
+            style={{
+              position: 'fixed',
+              bottom: '24px',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '12px 24px',
+              borderRadius: '12px',
+              border: 'none',
+              background: 'rgba(0,0,0,0.75)',
+              backdropFilter: 'blur(12px)',
+              color: '#fff',
+              fontSize: '14px',
+              fontWeight: '600',
+              cursor: 'pointer',
+              zIndex: 1001,
+            }}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" />
+              <line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
+            Télécharger
+          </button>
         </div>
       )}
     </>
